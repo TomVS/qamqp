@@ -26,6 +26,7 @@ private Q_SLOTS:
     void unnamed();
     void exclusiveAccess();
     void exclusiveRemoval();
+    void maxPriorityQueue();
     void notFound();
     void remove();
     void removeIfUnused();
@@ -204,6 +205,35 @@ void tst_QAMQPQueue::exclusiveRemoval()
     QCOMPARE(passiveQueue->error(), QAMQP::NotFoundError);
     secondClient.disconnectFromHost();
     QVERIFY(waitForSignal(&secondClient, SIGNAL(disconnected())));
+}
+
+void tst_QAMQPQueue::maxPriorityQueue()
+{
+    QAmqpQueue *queue = client->createQueue("test-max-priority-queue");
+    QAmqpTable args;
+    args.insert("x-max-priority", 4);
+    queue->declare(QAmqpQueue::Durable, args);
+    QVERIFY(waitForSignal(queue, SIGNAL(declared())));
+    QCOMPARE(queue->property("x-max-priority").toInt(), 4);
+
+    // create a second client to connect to it and check the priority property
+    {
+        QAmqpClient secondClient;
+        secondClient.connectToHost();
+        QVERIFY(waitForSignal(&secondClient, SIGNAL(connected())));
+        QAmqpQueue *testPriorityQueue = secondClient.createQueue("test-max-priority-queue");
+        testPriorityQueue->declare(QAmqpQueue::Passive);
+        QVERIFY(waitForSignal(testPriorityQueue, SIGNAL(declared())));
+        QVERIFY(testPriorityQueue->options() & QAmqpQueue::Passive);
+        QCOMPARE(testPriorityQueue->property("x-max-priority").toInt(), 4);
+
+        secondClient.disconnectFromHost();
+        QVERIFY(waitForSignal(&secondClient, SIGNAL(disconnected())));
+    }
+
+    // clean up queue
+    queue->remove(QAmqpQueue::roForce);
+    QVERIFY(waitForSignal(queue, SIGNAL(removed())));
 }
 
 void tst_QAMQPQueue::notFound()
