@@ -214,6 +214,7 @@ void tst_QAMQPQueue::maxPriorityQueue()
     args.insert("x-max-priority", 4);
     queue->declare(QAmqpQueue::Durable, args);
     QVERIFY(waitForSignal(queue, SIGNAL(declared())));
+    QVERIFY(queue->options() & QAmqpQueue::Durable);
     QCOMPARE(queue->property("x-max-priority").toInt(), 4);
 
     // create a second client to connect to it and check the priority property
